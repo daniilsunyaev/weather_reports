@@ -54,7 +54,7 @@ pub async fn get_forecast_weather(city_name: &str, days_count: usize) -> Result<
 }
 
 pub async fn get_specific_day_weather(city_name: &str, days_since: usize) -> Result<WeatherReport, String> {
-    let mut report = get_forecast_weather(city_name, days_since).await?;
+    let mut report = get_forecast_weather(city_name, days_since + 1).await?;
     Ok(report.remove(days_since))
 }
 
