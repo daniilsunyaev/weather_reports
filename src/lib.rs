@@ -53,6 +53,11 @@ pub async fn get_forecast_weather(city_name: &str, days_count: usize) -> Result<
     }
 }
 
+pub async fn get_specific_day_weather(city_name: &str, days_since: usize) -> Result<WeatherReport, String> {
+    let mut report = get_forecast_weather(city_name, days_since).await?;
+    Ok(report.remove(days_since))
+}
+
 async fn get_open_weather_current(city_name: &str) -> Result<WeatherReport, Box<dyn Error>> {
     weather_clients::open_weather::OpenWeather::new(open_weather_api_key()).get_current(city_name).await
 }
