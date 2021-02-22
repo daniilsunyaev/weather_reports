@@ -1,8 +1,6 @@
 use actix_web::{get, App, HttpResponse, HttpServer, Responder};
 use dotenv::dotenv;
 
-mod weather_clients;
-
 #[get("/")]
 async fn hello() -> impl Responder {
     HttpResponse::Ok().body("Hey, world")
