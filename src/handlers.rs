@@ -68,5 +68,5 @@ fn format_forecat_report(reports: Vec<WeatherReport>) -> String {
 
 fn format_daily_report(report: WeatherReport) -> String {
     let date = chrono::offset::Local::today();
-    format!("{}, temperature: {}\n", date.format("%a %b %e").to_string(), report.temperature)
+    format!("{}, temperature: {}", date.format("%a %b %e").to_string(), report.temperature)
 }

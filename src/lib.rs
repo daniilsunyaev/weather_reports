@@ -5,7 +5,7 @@ use dotenv::dotenv;
 use std::net::TcpListener;
 
 mod weather_clients;
-pub mod handlers;
+mod handlers;
 
 #[derive(Debug)]
 pub struct WeatherReport {
