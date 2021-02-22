@@ -1,23 +1,26 @@
 use std::error::Error;
-use actix_web::{web, get, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web::{App, HttpServer};
 use actix_web::dev::Server;
 use dotenv::dotenv;
+use std::net::TcpListener;
 
 mod weather_clients;
-pub mod handlers;
+mod handlers;
 
 #[derive(Debug)]
 pub struct WeatherReport {
     pub temperature: f64
 }
 
-pub fn run() -> Result<Server, std::io::Error> {
+pub fn run(listener: TcpListener) -> Result<Server, std::io::Error> {
     dotenv().ok();
 
     let server = HttpServer::new(|| {
-        App::new().service(handlers::daily)
+        App::new()
+            .service(handlers::daily)
+            .service(handlers::forecast)
     })
-    .bind("127.0.0.1:7878")?
+    .listen(listener)?
     .run();
 
     Ok(server)
