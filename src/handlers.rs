@@ -1,4 +1,4 @@
-use actix_web::{web, get, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web::{web, get, HttpResponse, Responder};
 use serde::Deserialize;
 use crate::WeatherReport;
 
