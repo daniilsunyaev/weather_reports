@@ -3,7 +3,7 @@ use actix_web::{web, get, App, HttpRequest, HttpResponse, HttpServer, Responder}
 use actix_web::dev::Server;
 use dotenv::dotenv;
 
-pub mod weather_clients; // TODO: remove
+mod weather_clients;
 pub mod handlers;
 
 #[derive(Debug)]
