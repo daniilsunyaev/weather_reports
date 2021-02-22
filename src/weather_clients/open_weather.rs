@@ -1,4 +1,4 @@
-use weather_reports::WeatherReport;
+use crate::WeatherReport;
 use reqwest::header::CONTENT_TYPE;
 use std::error::Error;
 use std::fmt;
