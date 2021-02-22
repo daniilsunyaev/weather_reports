@@ -1,10 +1,26 @@
-mod weather_clients;
-
 use std::error::Error;
+use actix_web::{web, get, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web::dev::Server;
+use dotenv::dotenv;
+
+mod weather_clients;
+pub mod handlers;
 
 #[derive(Debug)]
 pub struct WeatherReport {
     pub temperature: f64
+}
+
+pub fn run() -> Result<Server, std::io::Error> {
+    dotenv().ok();
+
+    let server = HttpServer::new(|| {
+        App::new().service(handlers::daily)
+    })
+    .bind("127.0.0.1:7878")?
+    .run();
+
+    Ok(server)
 }
 
 pub async fn get_current_weather(city_name: &str) -> Result<WeatherReport, String> {
@@ -54,7 +70,7 @@ pub async fn get_forecast_weather(city_name: &str, days_count: usize) -> Result<
 }
 
 pub async fn get_specific_day_weather(city_name: &str, days_since: usize) -> Result<WeatherReport, String> {
-    let mut report = get_forecast_weather(city_name, days_since).await?;
+    let mut report = get_forecast_weather(city_name, days_since + 1).await?;
     Ok(report.remove(days_since))
 }
 

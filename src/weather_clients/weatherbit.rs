@@ -5,7 +5,8 @@ use std::fmt;
 
 #[derive(Debug)]
 pub struct Weatherbit {
-    api_key: String
+    api_key: String,
+    api_path_prefix: String
 }
 
 #[derive(Debug)]
@@ -17,22 +18,28 @@ impl fmt::Display for WeatherbitJsonParseError {
     }
 }
 
+const API_PATH_PREFIX: &str = "http://api.weatherbit.io/v2.0/";
+
 impl Weatherbit {
-    const API_PATH_PREFIX: &'static str = "http://api.weatherbit.io/v2.0/";
 
     pub fn new(api_key: String) -> Self {
-        Self { api_key: api_key }
+        Self { api_key: api_key, api_path_prefix: API_PATH_PREFIX.to_string() }
+    }
+
+    // used for tests
+    pub fn new_with_prefix(api_key: String, api_path_prefix: String) -> Self {
+        Self { api_key: api_key, api_path_prefix: api_path_prefix }
     }
 
     pub async fn get_current(&self, city_name: &str) -> Result<WeatherReport, Box<dyn Error>> {
-        let full_path = format!("{}/current?key={}&city={}", Weatherbit::API_PATH_PREFIX, self.api_key, city_name);
+        let full_path = format!("{}/current?key={}&city={}", self.api_path_prefix, self.api_key, city_name);
         let raw_json = Self::get_raw(full_path).await?;
         Self::parse_report_from_raw_json(raw_json)
     }
 
     pub async fn get_forecast(&self, city_name: &str, days_count: usize) -> Result<Vec<WeatherReport>, Box<dyn Error>> {
         let full_path = format!("{}/forecast/daily?key={}&city={}&days={}",
-                                Weatherbit::API_PATH_PREFIX, self.api_key, city_name, days_count);
+                                self.api_path_prefix, self.api_key, city_name, days_count);
         let raw_json = Self::get_raw(full_path).await?;
         Self::parse_report_array_from_raw_json(raw_json)
     }
@@ -77,6 +84,8 @@ impl Weatherbit {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use httpmock::MockServer;
+    use httpmock::Method::GET;
 
     #[test]
     fn it_deserializes_current_weather_valid_raw_json() {
@@ -169,5 +178,44 @@ mod tests {
             Weatherbit::parse_report_array_from_raw_json(json_value).is_err(),
             true
         )
+    }
+
+    #[actix_rt::test]
+    async fn it_fetches_data_from_weatherbit_service() {
+        let server = MockServer::start();
+        server.mock(|when, then| {
+            when.method(GET)
+                .path("/current");
+
+            let json = std::fs::read_to_string("./tests/fixtures/weatherbit_current_success.json").unwrap();
+            then.status(200)
+                .header("Content-Type", "application/json")
+                .body(json);
+        });
+
+        let key = "apikey".to_string();
+        let report = Weatherbit::new_with_prefix(key, server.url("")).get_current("kazan").await;
+
+        assert_eq!(report.is_ok(), true);
+        assert_eq!(report.unwrap().temperature, -23.0);
+    }
+
+    #[actix_rt::test]
+    async fn it_returns_error_for_wrong_key() {
+        let server = MockServer::start();
+        server.mock(|when, then| {
+            when.method(GET)
+                .path("/weather");
+
+            let json = std::fs::read_to_string("./tests/fixtures/weatherbit_invalid_key.json").unwrap();
+            then.status(403)
+                .header("Content-Type", "application/json")
+                .body(json);
+        });
+
+        let key = "apikey".to_string();
+        let report = Weatherbit::new_with_prefix(key, server.url("")).get_current("kazan").await;
+
+        assert_eq!(report.is_err(), true);
     }
 }
