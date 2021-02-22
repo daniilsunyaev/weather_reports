@@ -5,7 +5,8 @@ use std::fmt;
 
 #[derive(Debug)]
 pub struct OpenWeather {
-    api_key: String
+    api_key: String,
+    api_path_prefix: String
 }
 
 #[derive(Debug)]
@@ -17,23 +18,28 @@ impl fmt::Display for OpenWeatherJsonParseError {
     }
 }
 
+const API_PATH_PREFIX : &str = "http://api.openweathermap.org/data/2.5";
 impl OpenWeather {
-    const API_PATH_PREFIX: &'static str = "http://api.openweathermap.org/data/2.5";
 
     pub fn new(api_key: String) -> Self {
-        Self { api_key: api_key }
+        Self { api_key: api_key, api_path_prefix: API_PATH_PREFIX.to_string() }
+    }
+
+    // used for tests
+    pub fn new_with_prefix(api_key: String, api_path_prefix: String) -> Self {
+        Self { api_key: api_key, api_path_prefix: api_path_prefix }
     }
 
     pub async fn get_current(&self, city_name: &str) -> Result<WeatherReport, Box<dyn Error>> {
         let full_path = format!("{}/weather?APPID={}&q={}&units=metric",
-                                OpenWeather::API_PATH_PREFIX, self.api_key, city_name);
+                                self.api_path_prefix, self.api_key, city_name);
         let raw_json = Self::get_raw(full_path).await?;
         Self::parse_report_from_raw_json(raw_json)
     }
 
     pub async fn get_forecast(&self, city_name: &str, days_count: usize) -> Result<Vec<WeatherReport>, Box<dyn Error>> {
         let full_path = format!("{}/forecast?APPID={}&q={}&cnt={}&units=metric",
-                                OpenWeather::API_PATH_PREFIX, self.api_key, city_name, days_count);
+                                self.api_path_prefix, self.api_key, city_name, days_count);
         let raw_json = Self::get_raw(full_path).await?;
         Self::parse_report_array_from_raw_json(raw_json)
     }
@@ -78,6 +84,8 @@ impl OpenWeather {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use httpmock::MockServer;
+    use httpmock::Method::GET;
 
     #[test]
     fn it_deserializes_current_weather_valid_raw_json() {
@@ -181,4 +189,44 @@ mod tests {
             true
         )
     }
+
+    #[actix_rt::test]
+    async fn it_fetches_data_from_open_weather_service() {
+        let server = MockServer::start();
+        server.mock(|when, then| {
+            when.method(GET)
+                .path("/weather");
+
+            let json = std::fs::read_to_string("./tests/fixtures/open_weather_current_success.json").unwrap();
+            then.status(200)
+                .header("Content-Type", "application/json")
+                .body(json);
+        });
+
+        let key = "apikey".to_string();
+        let report = OpenWeather::new_with_prefix(key, server.url("")).get_current("kazan").await;
+
+        assert_eq!(report.is_ok(), true);
+        assert_eq!(report.unwrap().temperature, -26.0);
+    }
+
+    #[actix_rt::test]
+    async fn it_returns_error_for_wrong_key() {
+        let server = MockServer::start();
+        server.mock(|when, then| {
+            when.method(GET)
+                .path("/weather");
+
+            let json = std::fs::read_to_string("./tests/fixtures/open_weather_invalid_key.json").unwrap();
+            then.status(401)
+                .header("Content-Type", "application/json")
+                .body(json);
+        });
+
+        let key = "apikey".to_string();
+        let report = OpenWeather::new_with_prefix(key, server.url("")).get_current("kazan").await;
+
+        assert_eq!(report.is_err(), true);
+    }
 }
+
