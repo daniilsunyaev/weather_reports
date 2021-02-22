@@ -15,7 +15,9 @@ pub fn run() -> Result<Server, std::io::Error> {
     dotenv().ok();
 
     let server = HttpServer::new(|| {
-        App::new().service(handlers::daily)
+        App::new()
+            .service(handlers::daily)
+            .service(handlers::forecast)
     })
     .bind("127.0.0.1:7878")?
     .run();

@@ -21,12 +21,11 @@ impl fmt::Display for WeatherbitJsonParseError {
 const API_PATH_PREFIX: &str = "http://api.weatherbit.io/v2.0/";
 
 impl Weatherbit {
-
     pub fn new(api_key: String) -> Self {
         Self { api_key: api_key, api_path_prefix: API_PATH_PREFIX.to_string() }
     }
 
-    // used for tests
+    #[cfg(test)]
     pub fn new_with_prefix(api_key: String, api_path_prefix: String) -> Self {
         Self { api_key: api_key, api_path_prefix: api_path_prefix }
     }
