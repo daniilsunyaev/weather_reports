@@ -36,15 +36,15 @@ Tue Feb 23, temperature: -17.66
 get weather forecast for specific day:
 ```
 curl "localhost:7878/daily?city_name=moscow&days_since=2"
-Wed Feb 24, temperature: -12.135
+Thu Feb 25, temperature: -0.31
 ```
 
 get weather forecast for 5 days:
 ```
 curl "localhost:7878/forecast?city_name=london"
-Tue Feb 23, temperature: 11.515
-Tue Feb 23, temperature: 11.865
-Wed Feb 24, temperature: 8.775
-Thu Feb 25, temperature: 8.76
-Thu Feb 25, temperature: 9.775
+Tue Feb 23, temperature: 12.195
+Wed Feb 24, temperature: 13.09
+Thu Feb 25, temperature: 8.55
+Fri Feb 26, temperature: 7.91
+Sat Feb 27, temperature: 9.465
 ```
