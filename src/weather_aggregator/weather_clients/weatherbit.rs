@@ -71,8 +71,9 @@ impl Weatherbit {
 
     fn parse_report_from_weatherbit_json_struct(data: &serde_json::Value) -> Result<WeatherReport, Box<dyn Error>> {
         let temp = data["temp"].as_f64();
-        if temp.is_some() {
-            Ok(WeatherReport { temperature: temp.unwrap() })
+        let timestamp = data["ts"].as_i64();
+        if temp.is_some() && timestamp.is_some() {
+            Ok(WeatherReport { temperature: temp.unwrap(), unix_timestamp: timestamp.unwrap() })
         } else {
             Err(WeatherbitJsonParseError.into())
         }
