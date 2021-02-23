@@ -30,15 +30,32 @@ impl OpenWeather {
     }
 
     pub async fn get_current(&self, city_name: &str) -> Result<WeatherReport, Box<dyn Error>> {
-        let full_path = format!("{}/weather?APPID={}&q={}&units=metric",
-                                self.api_path_prefix, self.api_key, city_name);
-        let raw_json = Self::get_raw(full_path).await?;
+        let raw_json = self.get_raw_current(city_name).await?;
         Self::parse_report_from_raw_json(raw_json)
     }
 
     pub async fn get_forecast(&self, city_name: &str, days_count: usize) -> Result<Vec<WeatherReport>, Box<dyn Error>> {
-        let full_path = format!("{}/forecast?APPID={}&q={}&cnt={}&units=metric",
-                                self.api_path_prefix, self.api_key, city_name, days_count);
+        let current_json = self.get_raw_current(city_name).await?;
+        let lat = current_json["coord"]["lat"].as_f64();
+        let lon = current_json["coord"]["lon"].as_f64();
+        if let (Some(lat), Some(lon)) = (lat, lon) {
+            let mut weekly_forecast = self.get_onecall_forecast(lat, lon).await?;
+            weekly_forecast.truncate(days_count);
+            Ok(weekly_forecast)
+        } else {
+            Err(OpenWeatherJsonParseError.into())
+        }
+    }
+
+    pub async fn get_raw_current(&self, city_name: &str) -> Result<serde_json::Value, Box<dyn Error>> {
+        let full_path = format!("{}/weather?APPID={}&q={}&units=metric",
+                                self.api_path_prefix, self.api_key, city_name);
+        Ok(Self::get_raw(full_path).await?)
+    }
+
+    pub async fn get_onecall_forecast(&self, lat: f64, lon: f64) -> Result<Vec<WeatherReport>, Box<dyn Error>> {
+        let full_path = format!("{}/onecall?APPID={}&lat={}&lon={}&units=metric&&exclude=current,minutely,hourly",
+                                self.api_path_prefix, self.api_key, lat, lon);
         let raw_json = Self::get_raw(full_path).await?;
         Self::parse_report_array_from_raw_json(raw_json)
     }
@@ -57,19 +74,29 @@ impl OpenWeather {
     }
 
     fn parse_report_from_raw_json(data: serde_json::Value) -> Result<WeatherReport, Box<dyn Error>> {
-        Self::parse_report_from_open_weather_json_struct(&data)
+        Self::parse_report_from_open_weather_current_json_struct(&data)
     }
 
     fn parse_report_array_from_raw_json(data: serde_json::Value) -> Result<Vec<WeatherReport>, Box<dyn Error>> {
-        let array = data["list"].as_array();
+        let array = data["daily"].as_array();
         if let Some(array) = array {
-            array.iter().map(Self::parse_report_from_open_weather_json_struct).collect()
+            array.iter().map(Self::parse_report_from_open_weather_onecall_json_struct).collect()
         } else {
             Err(OpenWeatherJsonParseError.into())
         }
     }
 
-    fn parse_report_from_open_weather_json_struct(data: &serde_json::Value) -> Result<WeatherReport, Box<dyn Error>> {
+    fn parse_report_from_open_weather_onecall_json_struct(data: &serde_json::Value) -> Result<WeatherReport, Box<dyn Error>> {
+        let temp = data["temp"]["day"].as_f64();
+        let timestamp = data["dt"].as_i64();
+        if let (Some(temperature), Some(timestamp)) = (temp, timestamp) {
+            Ok(WeatherReport { temperature, unix_timestamp: timestamp })
+        } else {
+            Err(OpenWeatherJsonParseError.into())
+        }
+    }
+
+    fn parse_report_from_open_weather_current_json_struct(data: &serde_json::Value) -> Result<WeatherReport, Box<dyn Error>> {
         let temp = data["main"]["temp"].as_f64();
         let timestamp = data["dt"].as_i64();
         if let (Some(temperature), Some(timestamp)) = (temp, timestamp) {
@@ -129,23 +156,20 @@ mod tests {
     fn it_deserializes_forecast_weather_valid_raw_json() {
         let raw_json = r#"
         {
-            "list": [
+            "daily": [
                 {
-                    "main": {
-                        "temp": -13.45
+                    "temp": {
+                        "day": -13.45
                     },
                     "dt": 1613984400
                 },
                 {
-                    "main": {
-                        "temp": -13.21
+                    "temp": {
+                        "day": -13.21
                     },
                     "dt": 1613995200
                 }
-            ],
-            "city": {
-                "name": "Moscow"
-            }
+            ]
         }
         "#;
         let json_value = serde_json::from_str(raw_json).unwrap();
@@ -162,23 +186,20 @@ mod tests {
     fn it_fails_to_deserialize_forecast_weather_invalid_raw_json() {
         let raw_json = r#"
         {
-            "list": [
+            "daily": [
                 {
-                    "main": {
-                        "temsp": -13.45
+                    "temsp": {
+                        "day": -13.45
                     },
                     "dt": 1613984400
                 },
                 {
-                    "main": {
-                        "temp": -13.21
+                    "temp": {
+                        "day": -13.21
                     },
                     "dt": 1613995200
                 }
-            ],
-            "city": {
-                "name": "Moscow"
-            }
+            ]
         }
         "#;
         let json_value = serde_json::from_str(raw_json).unwrap();
