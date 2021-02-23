@@ -19,8 +19,8 @@ async fn daily(web::Query(params): web::Query<DailyParams>) -> impl Responder {
     };
     if params.city_name.is_none() {
         HttpResponse::UnprocessableEntity().body("city_name should be specified")
-    } else if params.days_since.is_some() && days_since.is_none() {
-        HttpResponse::UnprocessableEntity().body("days_since should be non-negative number")
+    } else if params.days_since.is_some() && (days_since.is_none() || days_since.unwrap() > 6) {
+        HttpResponse::UnprocessableEntity().body("days_since should be non-negative number, not higher than 6")
     } else {
         let report : Result<WeatherReport, String>;
         if days_since.is_none() {
@@ -42,12 +42,14 @@ pub struct ForecastParams {
     city_name: Option<String>,
 }
 
+const FORECAST_DAYS : usize = 5;
+
 #[get("/forecast")]
 async fn forecast(web::Query(params): web::Query<ForecastParams>) -> impl Responder {
     if params.city_name.is_none() {
         HttpResponse::UnprocessableEntity().body("city_name should be specified")
     } else {
-        let report = weather_aggregator::get_forecast_weather(params.city_name.unwrap().as_str(), 5).await;
+        let report = weather_aggregator::get_forecast_weather(params.city_name.unwrap().as_str(), FORECAST_DAYS).await;
 
         if report.is_ok() {
             HttpResponse::Ok().body(format_forecast_report(report.unwrap()))
