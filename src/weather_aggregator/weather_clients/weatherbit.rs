@@ -22,12 +22,12 @@ const API_PATH_PREFIX: &str = "http://api.weatherbit.io/v2.0/";
 
 impl Weatherbit {
     pub fn new(api_key: String) -> Self {
-        Self { api_key: api_key, api_path_prefix: API_PATH_PREFIX.to_string() }
+        Self {  api_key, api_path_prefix: API_PATH_PREFIX.to_string() }
     }
 
     #[cfg(test)]
     pub fn new_with_prefix(api_key: String, api_path_prefix: String) -> Self {
-        Self { api_key: api_key, api_path_prefix: api_path_prefix }
+        Self { api_key, api_path_prefix }
     }
 
     pub async fn get_current(&self, city_name: &str) -> Result<WeatherReport, Box<dyn Error>> {
@@ -62,8 +62,8 @@ impl Weatherbit {
 
     fn parse_report_array_from_raw_json(data: serde_json::Value) -> Result<Vec<WeatherReport>, Box<dyn Error>> {
         let array = data["data"].as_array();
-        if array.is_some() {
-            array.unwrap().into_iter().map(Self::parse_report_from_weatherbit_json_struct).collect()
+        if let Some(array) = array {
+            array.iter().map(Self::parse_report_from_weatherbit_json_struct).collect()
         } else {
             Err(WeatherbitJsonParseError.into())
         }
@@ -72,8 +72,8 @@ impl Weatherbit {
     fn parse_report_from_weatherbit_json_struct(data: &serde_json::Value) -> Result<WeatherReport, Box<dyn Error>> {
         let temp = data["temp"].as_f64();
         let timestamp = data["ts"].as_i64();
-        if temp.is_some() && timestamp.is_some() {
-            Ok(WeatherReport { temperature: temp.unwrap(), unix_timestamp: timestamp.unwrap() })
+        if let (Some(temperature), Some(timestamp)) = (temp, timestamp) {
+            Ok(WeatherReport { temperature, unix_timestamp: timestamp })
         } else {
             Err(WeatherbitJsonParseError.into())
         }
