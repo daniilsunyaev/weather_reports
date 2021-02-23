@@ -26,7 +26,7 @@ impl OpenWeather {
 
     #[cfg(test)]
     pub fn new_with_prefix(api_key: String, api_path_prefix: String) -> Self {
-        Self { api_key, api_path_prefix: api_path_prefix }
+        Self { api_key, api_path_prefix }
     }
 
     pub async fn get_current(&self, city_name: &str) -> Result<WeatherReport, Box<dyn Error>> {
