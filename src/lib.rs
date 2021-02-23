@@ -13,15 +13,6 @@ pub struct WeatherReport {
     pub unix_timestamp: i64
 }
 
-impl WeatherReport {
-    pub fn mean_merge(&self, another_report: WeatherReport) -> WeatherReport {
-        WeatherReport {
-            temperature: (self.temperature + another_report.temperature) / 2.0,
-            unix_timestamp: (self.unix_timestamp + another_report.unix_timestamp) / 2
-        }
-    }
-}
-
 pub fn run(listener: TcpListener) -> Result<Server, std::io::Error> {
     dotenv().ok();
     verify_env_vars();

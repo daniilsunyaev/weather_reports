@@ -150,12 +150,12 @@ mod tests {
         "#;
         let json_value = serde_json::from_str(raw_json).unwrap();
 
-        let parsed_reposts = OpenWeather::parse_report_array_from_raw_json(json_value).unwrap();
+        let parsed_reports = OpenWeather::parse_report_array_from_raw_json(json_value).unwrap();
 
-        assert_eq!(parsed_reposts[0].temperature, -13.45);
-        assert_eq!(parsed_reposts[0].unix_timestamp, 1613984400);
-        assert_eq!(parsed_reposts[1].temperature, -13.21);
-        assert_eq!(parsed_reposts[1].unix_timestamp, 1613995200);
+        assert_eq!(parsed_reports[0].temperature, -13.45);
+        assert_eq!(parsed_reports[0].unix_timestamp, 1613984400);
+        assert_eq!(parsed_reports[1].temperature, -13.21);
+        assert_eq!(parsed_reports[1].unix_timestamp, 1613995200);
     }
 
     #[test]
