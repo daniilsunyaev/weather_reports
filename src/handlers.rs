@@ -1,6 +1,7 @@
 use actix_web::{web, get, HttpResponse, Responder};
 use serde::Deserialize;
 use crate::WeatherReport;
+use crate::weather_aggregator;
 
 #[derive(Deserialize)]
 pub struct DailyParams {
@@ -22,9 +23,9 @@ async fn daily(web::Query(params): web::Query<DailyParams>) -> impl Responder {
     } else {
         let report : Result<WeatherReport, String>;
         if days_since.is_none() {
-            report = crate::get_current_weather(params.city_name.unwrap().as_str()).await;
+            report = weather_aggregator::get_current_weather(params.city_name.unwrap().as_str()).await;
         } else {
-            report = crate::get_specific_day_weather(params.city_name.unwrap().as_str(), days_since.unwrap()).await;
+            report = weather_aggregator::get_specific_day_weather(params.city_name.unwrap().as_str(), days_since.unwrap()).await;
         };
 
         if report.is_ok() {
@@ -45,7 +46,7 @@ async fn forecast(web::Query(params): web::Query<ForecastParams>) -> impl Respon
     if params.city_name.is_none() {
         HttpResponse::UnprocessableEntity().body("city_name should be specified")
     } else {
-        let report = crate::get_forecast_weather(params.city_name.unwrap().as_str(), 5).await;
+        let report = weather_aggregator::get_forecast_weather(params.city_name.unwrap().as_str(), 5).await;
 
         if report.is_ok() {
             HttpResponse::Ok().body(format_forecat_report(report.unwrap()))
