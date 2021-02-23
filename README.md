@@ -48,6 +48,3 @@ Wed Feb 24, temperature: 8.775
 Thu Feb 25, temperature: 8.76
 Thu Feb 25, temperature: 9.775
 ```
-
-
-
