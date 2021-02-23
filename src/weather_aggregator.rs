@@ -2,6 +2,8 @@ mod weather_clients;
 
 use crate::WeatherReport;
 use std::error::Error;
+use weather_clients::open_weather::OpenWeather;
+use weather_clients::weatherbit::Weatherbit;
 
 pub async fn get_current_weather(city_name: &str) -> Result<WeatherReport, String> {
     let mut reports : Vec<WeatherReport> = vec![];
@@ -55,19 +57,27 @@ pub async fn get_specific_day_weather(city_name: &str, days_since: usize) -> Res
 }
 
 async fn get_open_weather_current(city_name: &str) -> Result<WeatherReport, Box<dyn Error>> {
-    weather_clients::open_weather::OpenWeather::new(open_weather_api_key()).get_current(city_name).await
+    open_weather_client().get_current(city_name).await
 }
 
 async fn get_weatherbit_current(city_name: &str) -> Result<WeatherReport, Box<dyn Error>> {
-    weather_clients::weatherbit::Weatherbit::new(weatherbit_api_key()).get_current(city_name).await
+    weatherbit_client().get_current(city_name).await
 }
 
 async fn get_open_weather_forecast(city_name: &str, days_count: usize) -> Result<Vec<WeatherReport>, Box<dyn Error>> {
-    weather_clients::open_weather::OpenWeather::new(open_weather_api_key()).get_forecast(city_name, days_count).await
+    open_weather_client().get_forecast(city_name, days_count).await
 }
 
 async fn get_weatherbit_forecast(city_name: &str, days_count: usize) -> Result<Vec<WeatherReport>, Box<dyn Error>> {
-    weather_clients::weatherbit::Weatherbit::new(weatherbit_api_key()).get_forecast(city_name, days_count).await
+    weatherbit_client().get_forecast(city_name, days_count).await
+}
+
+fn open_weather_client() -> OpenWeather {
+    OpenWeather::new(open_weather_api_key())
+}
+
+fn weatherbit_client() -> Weatherbit {
+    Weatherbit::new(weatherbit_api_key())
 }
 
 fn weatherbit_api_key() -> String {
