@@ -71,8 +71,9 @@ impl OpenWeather {
 
     fn parse_report_from_open_weather_json_struct(data: &serde_json::Value) -> Result<WeatherReport, Box<dyn Error>> {
         let temp = data["main"]["temp"].as_f64();
-        if temp.is_some() {
-            Ok(WeatherReport { temperature: temp.unwrap() })
+        let timestamp = data["dt"].as_i64();
+        if temp.is_some() && timestamp.is_some() {
+            Ok(WeatherReport { temperature: temp.unwrap(), unix_timestamp: timestamp.unwrap() })
         } else {
             Err(OpenWeatherJsonParseError.into())
         }
@@ -99,11 +100,9 @@ mod tests {
         "#;
         let json_value = serde_json::from_str(raw_json).unwrap();
 
-
-        assert_eq!(
-            OpenWeather::parse_report_from_raw_json(json_value).unwrap().temperature,
-            -12.94
-        )
+        let weather_report = OpenWeather::parse_report_from_raw_json(json_value).unwrap();
+        assert_eq!(weather_report.temperature, -12.94);
+        assert_eq!(weather_report.unix_timestamp, 1613978904);
     }
 
     #[test]
@@ -118,7 +117,6 @@ mod tests {
         }
         "#;
         let json_value = serde_json::from_str(raw_json).unwrap();
-
 
         assert_eq!(
             OpenWeather::parse_report_from_raw_json(json_value).is_err(),
@@ -152,10 +150,12 @@ mod tests {
         "#;
         let json_value = serde_json::from_str(raw_json).unwrap();
 
-        let parsed_reposts =OpenWeather::parse_report_array_from_raw_json(json_value).unwrap();
+        let parsed_reports = OpenWeather::parse_report_array_from_raw_json(json_value).unwrap();
 
-        assert_eq!(parsed_reposts[0].temperature, -13.45);
-        assert_eq!(parsed_reposts[1].temperature, -13.21)
+        assert_eq!(parsed_reports[0].temperature, -13.45);
+        assert_eq!(parsed_reports[0].unix_timestamp, 1613984400);
+        assert_eq!(parsed_reports[1].temperature, -13.21);
+        assert_eq!(parsed_reports[1].unix_timestamp, 1613995200);
     }
 
     #[test]

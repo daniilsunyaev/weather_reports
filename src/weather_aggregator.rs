@@ -4,6 +4,33 @@ use crate::WeatherReport;
 use std::error::Error;
 use weather_clients::open_weather::OpenWeather;
 use weather_clients::weatherbit::Weatherbit;
+use average::Mean;
+use average::Estimate;
+
+#[derive(Clone)]
+pub struct AverageWeatherReport {
+    pub temperature: Mean,
+    pub unix_timestamp: Mean
+}
+
+impl AverageWeatherReport {
+    pub fn new() -> AverageWeatherReport {
+        AverageWeatherReport { temperature: Mean::new(), unix_timestamp: Mean::new() }
+    }
+
+    pub fn add(&mut self, weather_report: WeatherReport) -> &AverageWeatherReport {
+        self.temperature.add(weather_report.temperature);
+        self.unix_timestamp.add(weather_report.unix_timestamp as f64);
+        self
+    }
+
+    pub fn mean(&self) -> WeatherReport {
+        WeatherReport {
+            temperature: self.temperature.mean(),
+            unix_timestamp: self.unix_timestamp.mean() as i64
+        }
+    }
+}
 
 pub async fn get_current_weather(city_name: &str) -> Result<WeatherReport, String> {
     let mut reports : Vec<WeatherReport> = vec![];
@@ -89,24 +116,28 @@ fn open_weather_api_key() -> String {
 }
 
 fn average_report(reports: Vec<WeatherReport>) -> WeatherReport {
-    let average_temperature =
-        reports
-        .iter()
-        .fold(0.0, |acc, report| (acc + report.temperature)) / (reports.len() as f64);
-
-    WeatherReport { temperature: average_temperature }
+    reports
+        .into_iter()
+        .fold(
+            AverageWeatherReport::new(),
+            |mut average, report| { average.add(report); average }
+        )
+        .mean()
 }
 
 fn average_forecast_report(reports: Vec<Vec<WeatherReport>>) -> Vec<WeatherReport> {
-    reports.iter()
-        .fold(vec![0f64; reports[0].len()], |acc, provider_forecast| {
-            acc.iter()
-                .zip(provider_forecast.iter())
-                .map(|(sum_temp, provider_daily_report)| sum_temp + provider_daily_report.temperature)
+    let average_reports = vec![AverageWeatherReport::new(); reports[0].len()];
+    reports
+        .into_iter()
+        .fold(average_reports, |average_forecast_report, forecast_report| {
+            average_forecast_report.into_iter()
+                .zip(forecast_report.into_iter())
+                .map(|(mut average, report)| { average.add(report); average })
                 .collect()
         })
-    .iter().map(|sum_temperature| WeatherReport { temperature: sum_temperature / (reports.len() as f64) })
-    .collect()
+        .into_iter()
+        .map(|average_report| average_report.mean())
+        .collect()
 }
 
 #[cfg(test)]
@@ -116,65 +147,77 @@ mod tests {
     #[test]
     fn averages_several_weather_reports() {
         let reports = vec![
-            WeatherReport { temperature: 2.0 },
-            WeatherReport { temperature: 4.0 },
-            WeatherReport { temperature: 2.0 },
-            WeatherReport { temperature: 8.0 }
+            WeatherReport { temperature: 2.0, unix_timestamp: 10 },
+            WeatherReport { temperature: 4.0, unix_timestamp: 20 },
+            WeatherReport { temperature: 2.0, unix_timestamp: 10 },
+            WeatherReport { temperature: 8.0, unix_timestamp: 20 }
         ];
 
-        assert_eq!(average_report(reports).temperature, 4.0);
+        let average_report = average_report(reports);
+        assert_eq!(average_report.temperature, 4.0);
+        assert_eq!(average_report.unix_timestamp, 15);
     }
 
     #[test]
     fn averages_single_weather_report() {
         let reports = vec![
-            WeatherReport { temperature: 2.0 },
+            WeatherReport { temperature: 2.0, unix_timestamp: 10 },
         ];
 
-        assert_eq!(average_report(reports).temperature, 2.0);
+        let average_report = average_report(reports);
+        assert_eq!(average_report.temperature, 2.0);
+        assert_eq!(average_report.unix_timestamp, 10);
     }
 
     #[test]
     fn averages_several_weather_forecast_reports() {
         let reports = vec![
             vec![
-                WeatherReport { temperature: 4.0 },
-                WeatherReport { temperature: 4.0 },
-                WeatherReport { temperature: 2.0 }
+                WeatherReport { temperature: 4.0, unix_timestamp: 10 },
+                WeatherReport { temperature: 4.0, unix_timestamp: 10 },
+                WeatherReport { temperature: 2.0, unix_timestamp: 10 }
             ],
             vec![
-                WeatherReport { temperature: 4.0 },
-                WeatherReport { temperature: 4.0 },
-                WeatherReport { temperature: 4.0 }
+                WeatherReport { temperature: 4.0, unix_timestamp: 10 },
+                WeatherReport { temperature: 4.0, unix_timestamp: 20 },
+                WeatherReport { temperature: 4.0, unix_timestamp: 30 }
             ],
             vec![
-                WeatherReport { temperature: 6.0 },
-                WeatherReport { temperature: 4.0 },
-                WeatherReport { temperature: 6.0 }
+                WeatherReport { temperature: 6.0, unix_timestamp: 10 },
+                WeatherReport { temperature: 4.0, unix_timestamp: 20 },
+                WeatherReport { temperature: 6.0, unix_timestamp: 20 }
             ],
             vec![
-                WeatherReport { temperature: 6.0 },
-                WeatherReport { temperature: 4.0 },
-                WeatherReport { temperature: 2.0 }
+                WeatherReport { temperature: 6.0, unix_timestamp: 10 },
+                WeatherReport { temperature: 4.0, unix_timestamp: 10 },
+                WeatherReport { temperature: 2.0, unix_timestamp: 20 }
             ]
         ];
 
         let average_report = average_forecast_report(reports);
 
         assert_eq!(average_report[0].temperature, 5.0);
+        assert_eq!(average_report[0].unix_timestamp, 10);
         assert_eq!(average_report[1].temperature, 4.0);
+        assert_eq!(average_report[1].unix_timestamp, 15);
         assert_eq!(average_report[2].temperature, 3.5);
+        assert_eq!(average_report[2].unix_timestamp, 20);
     }
 
     #[test]
     fn averages_single_weather_forecast_report() {
         let reports = vec![
-            vec![WeatherReport { temperature: 2.0 }, WeatherReport { temperature: 3.0 }]
+            vec![
+                WeatherReport { temperature: 2.0, unix_timestamp: 10 },
+                WeatherReport { temperature: 3.0, unix_timestamp: 33 }
+            ]
         ];
 
         let average_report = average_forecast_report(reports);
 
         assert_eq!(average_report[0].temperature, 2.0);
+        assert_eq!(average_report[0].unix_timestamp, 10);
         assert_eq!(average_report[1].temperature, 3.0);
+        assert_eq!(average_report[1].unix_timestamp, 33);
     }
 }

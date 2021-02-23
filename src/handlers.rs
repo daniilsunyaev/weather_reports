@@ -2,6 +2,7 @@ use actix_web::{web, get, HttpResponse, Responder};
 use serde::Deserialize;
 use crate::WeatherReport;
 use crate::weather_aggregator;
+use chrono::NaiveDateTime;
 
 #[derive(Deserialize)]
 pub struct DailyParams {
@@ -49,25 +50,22 @@ async fn forecast(web::Query(params): web::Query<ForecastParams>) -> impl Respon
         let report = weather_aggregator::get_forecast_weather(params.city_name.unwrap().as_str(), 5).await;
 
         if report.is_ok() {
-            HttpResponse::Ok().body(format_forecat_report(report.unwrap()))
+            HttpResponse::Ok().body(format_forecast_report(report.unwrap()))
         } else {
             HttpResponse::NotFound().body(report.err().unwrap())
         }
     }
 }
 
-fn format_forecat_report(reports: Vec<WeatherReport>) -> String {
+fn format_forecast_report(reports: Vec<WeatherReport>) -> String {
     let mut result_as_string = String::from("");
-    let mut date = chrono::offset::Local::today();
-    for i in 0..reports.len() {
-        result_as_string = format!("{}{}, temperature: {}\n",
-                                   result_as_string, date.format("%a %b %e").to_string(), reports[i].temperature);
-        date = date.succ();
+    for report in reports {
+        result_as_string = format!("{}{}\n", result_as_string, format_daily_report(report))
     }
     result_as_string
 }
 
 fn format_daily_report(report: WeatherReport) -> String {
-    let date = chrono::offset::Local::today();
+    let date = NaiveDateTime::from_timestamp(report.unix_timestamp, 0);
     format!("{}, temperature: {}", date.format("%a %b %e").to_string(), report.temperature)
 }

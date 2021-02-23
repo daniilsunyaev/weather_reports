@@ -9,7 +9,8 @@ mod handlers;
 
 #[derive(Debug)]
 pub struct WeatherReport {
-    pub temperature: f64
+    pub temperature: f64,
+    pub unix_timestamp: i64
 }
 
 pub fn run(listener: TcpListener) -> Result<Server, std::io::Error> {
