@@ -21,12 +21,12 @@ impl fmt::Display for OpenWeatherJsonParseError {
 const API_PATH_PREFIX : &str = "http://api.openweathermap.org/data/2.5";
 impl OpenWeather {
     pub fn new(api_key: String) -> Self {
-        Self { api_key: api_key, api_path_prefix: API_PATH_PREFIX.to_string() }
+        Self { api_key, api_path_prefix: API_PATH_PREFIX.to_string() }
     }
 
     #[cfg(test)]
     pub fn new_with_prefix(api_key: String, api_path_prefix: String) -> Self {
-        Self { api_key: api_key, api_path_prefix: api_path_prefix }
+        Self { api_key, api_path_prefix: api_path_prefix }
     }
 
     pub async fn get_current(&self, city_name: &str) -> Result<WeatherReport, Box<dyn Error>> {
@@ -62,8 +62,8 @@ impl OpenWeather {
 
     fn parse_report_array_from_raw_json(data: serde_json::Value) -> Result<Vec<WeatherReport>, Box<dyn Error>> {
         let array = data["list"].as_array();
-        if array.is_some() {
-            array.unwrap().into_iter().map(Self::parse_report_from_open_weather_json_struct).collect()
+        if let Some(array) = array {
+            array.iter().map(Self::parse_report_from_open_weather_json_struct).collect()
         } else {
             Err(OpenWeatherJsonParseError.into())
         }
@@ -72,8 +72,8 @@ impl OpenWeather {
     fn parse_report_from_open_weather_json_struct(data: &serde_json::Value) -> Result<WeatherReport, Box<dyn Error>> {
         let temp = data["main"]["temp"].as_f64();
         let timestamp = data["dt"].as_i64();
-        if temp.is_some() && timestamp.is_some() {
-            Ok(WeatherReport { temperature: temp.unwrap(), unix_timestamp: timestamp.unwrap() })
+        if let (Some(temperature), Some(timestamp)) = (temp, timestamp) {
+            Ok(WeatherReport { temperature, unix_timestamp: timestamp })
         } else {
             Err(OpenWeatherJsonParseError.into())
         }

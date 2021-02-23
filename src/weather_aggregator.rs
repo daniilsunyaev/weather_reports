@@ -48,7 +48,7 @@ pub async fn get_current_weather(city_name: &str) -> Result<WeatherReport, Strin
         reports.push(weatherbit_report.unwrap());
     }
 
-    if reports.len() > 0 {
+    if !reports.is_empty() {
         Ok(average_report(reports))
     } else {
         Err(String::from("Could not find weather data"))
@@ -71,7 +71,7 @@ pub async fn get_forecast_weather(city_name: &str, days_count: usize) -> Result<
         reports.push(weatherbit_report.unwrap());
     }
 
-    if reports.len() > 0 {
+    if !reports.is_empty() {
         Ok(average_forecast_report(reports))
     } else {
         Err(String::from("Could not find weather data"))
